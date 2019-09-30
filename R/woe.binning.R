@@ -1,6 +1,7 @@
 ##### This is the actual binning function for numeric variables and factors. #####
 
-woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, bad, good) {
+woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, bad, good,
+                          min.cutpoints) {
   
   
   #### Build subsets with target and predictor variable
@@ -55,41 +56,44 @@ woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.cla
     
     # Check for bins (without last regular and without NA bin) if frequencies < percentage limit specified above
     # (in reverse order to remain correct reference to cutpoints)
-    for (i in (nrow(woe.dfrm)-2):1) {
-      if (woe.dfrm$col.perc.a[i]<min.perc.class | woe.dfrm$col.perc.b[i]<min.perc.class | ((woe.dfrm[i,1]+woe.dfrm[i,2])/(sum(woe.dfrm[,1],na.rm=TRUE)+sum(woe.dfrm[,2],na.rm=TRUE)))<min.perc.total) {
-        # Remove cutpoint			
-        cutpoints <- cutpoints[-c((i+1))]
-        # Compute binned variable from cutpoints and add it to the subset data frame
-        dfrm$predictor.var.binned <- cut(dfrm$predictor.var, cutpoints, labels = NULL,
-                                         include.lowest = FALSE, right = TRUE, dig.lab = 10,
-                                         ordered_result = TRUE)
-        # Compute crosstab from binned variable and target variable and covert it to a data frame
-        freq.table <- table(dfrm$predictor.var.binned, dfrm$target.var, useNA="always")
-        row.names(freq.table)[is.na(row.names(freq.table))] <- 'Missing'   # Replace NA in row.names with string 'Missing'
-        woe.dfrm <- as.data.frame.matrix(freq.table)   # Convert frequency table to data frame
-        woe.dfrm <- woe.dfrm[, c(good, bad)]   # Select columns with raw frequencies only
-        # Compute columns percents for target classes from crosstab frequencies
-        woe.dfrm$col.perc.a <- woe.dfrm[,1]/sum(woe.dfrm[,1])
-        woe.dfrm$col.perc.b <- woe.dfrm[,2]/sum(woe.dfrm[,2])
-        # Correct column percents in case of 0 frequencies (in case of no NA skip last row)
-        if ( !anyNA(df[,2]) ) {
-          if ( min(woe.dfrm[-nrow(woe.dfrm),1],na.rm=TRUE)==0 | min(woe.dfrm[-nrow(woe.dfrm),2],na.rm=TRUE)==0 ) {
-            woe.dfrm$col.perc.a[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)
-            woe.dfrm$col.perc.b[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)	
-          }
-        } else {
-          if ( min(woe.dfrm[,1],na.rm=TRUE)==0 | min(woe.dfrm[,2],na.rm=TRUE)==0 ) {
-            woe.dfrm$col.perc.a <- (woe.dfrm$col.perc.a+0.0001)/sum(woe.dfrm$col.perc.a+0.0001)
-            woe.dfrm$col.perc.b <- (woe.dfrm$col.perc.b+0.0001)/sum(woe.dfrm$col.perc.b+0.0001)	
+    # But if min.perc.class is 0, this step is unnecessary
+    if (min.perc.class != 0){
+      for (i in (nrow(woe.dfrm)-2):1) {
+        if (woe.dfrm$col.perc.a[i]<min.perc.class | woe.dfrm$col.perc.b[i]<min.perc.class | ((woe.dfrm[i,1]+woe.dfrm[i,2])/(sum(woe.dfrm[,1],na.rm=TRUE)+sum(woe.dfrm[,2],na.rm=TRUE)))<min.perc.total) {
+          # Remove cutpoint			
+          cutpoints <- cutpoints[-c((i+1))]
+          # Compute binned variable from cutpoints and add it to the subset data frame
+          dfrm$predictor.var.binned <- cut(dfrm$predictor.var, cutpoints, labels = NULL,
+                                           include.lowest = FALSE, right = TRUE, dig.lab = 10,
+                                           ordered_result = TRUE)
+          # Compute crosstab from binned variable and target variable and covert it to a data frame
+          freq.table <- table(dfrm$predictor.var.binned, dfrm$target.var, useNA="always")
+          row.names(freq.table)[is.na(row.names(freq.table))] <- 'Missing'   # Replace NA in row.names with string 'Missing'
+          woe.dfrm <- as.data.frame.matrix(freq.table)   # Convert frequency table to data frame
+          woe.dfrm <- woe.dfrm[, c(good, bad)]   # Select columns with raw frequencies only
+          # Compute columns percents for target classes from crosstab frequencies
+          woe.dfrm$col.perc.a <- woe.dfrm[,1]/sum(woe.dfrm[,1])
+          woe.dfrm$col.perc.b <- woe.dfrm[,2]/sum(woe.dfrm[,2])
+          # Correct column percents in case of 0 frequencies (in case of no NA skip last row)
+          if ( !anyNA(df[,2]) ) {
+            if ( min(woe.dfrm[-nrow(woe.dfrm),1],na.rm=TRUE)==0 | min(woe.dfrm[-nrow(woe.dfrm),2],na.rm=TRUE)==0 ) {
+              woe.dfrm$col.perc.a[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)
+              woe.dfrm$col.perc.b[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)	
+            }
+          } else {
+            if ( min(woe.dfrm[,1],na.rm=TRUE)==0 | min(woe.dfrm[,2],na.rm=TRUE)==0 ) {
+              woe.dfrm$col.perc.a <- (woe.dfrm$col.perc.a+0.0001)/sum(woe.dfrm$col.perc.a+0.0001)
+              woe.dfrm$col.perc.b <- (woe.dfrm$col.perc.b+0.0001)/sum(woe.dfrm$col.perc.b+0.0001)	
+            }
           }
         }
+        # Stop in case 3 cutpoints (-Inf, x, +Inf) are reached
+        if ( length(cutpoints) < min.cutpoints) { break } 
       }
-      # Stop in case 3 cutpoints (-Inf, x, +Inf) are reached
-      if ( length(cutpoints)==3 ) { break } 
     }
     
     # Check for last regular bin if frequencies < percentage limit specified above (only in case number of cutpoints > 3
-    if ( length(cutpoints)>3 ) {
+    if ( length(cutpoints)> 3 ) {
       if (woe.dfrm$col.perc.a[(nrow(woe.dfrm)-1)]<min.perc.class | woe.dfrm$col.perc.b[(nrow(woe.dfrm)-1)]<min.perc.class | ((woe.dfrm[nrow(woe.dfrm)-1,1]+woe.dfrm[nrow(woe.dfrm)-1,2])/(sum(woe.dfrm[,1],na.rm=TRUE)+sum(woe.dfrm[,2],na.rm=TRUE)))<min.perc.total) {
         # Remove cutpoint
         cutpoints <- cutpoints[-c(nrow(woe.dfrm)-1)]
@@ -125,81 +129,43 @@ woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.cla
     ## Merge bins with similar WOE values and calculate corresponding WOE table and IV step by step
     ## until 2 bins are left (i.e. 3 cutpoints: -Inf, middle cutpoint, +Inf)
     
-    while ( length(cutpoints)>2 ) {
+    # First we bin down until there are less cutpoints than the max allowed.
+    
+    while ( length(cutpoints)> min.cutpoints ) {
       
-      # Compute binned variable from cutpoints and add it to the subset data frame
-      dfrm$predictor.var.binned <- cut(dfrm$predictor.var, cutpoints, labels = NULL,
-                                       include.lowest = FALSE, right = TRUE, dig.lab = 10,
-                                       ordered_result = TRUE)
-      
-      # Compute crosstab from binned variable and target variable and covert it to a data frame
-      freq.table <- table(dfrm$predictor.var.binned, dfrm$target.var, useNA="always")
-      row.names(freq.table)[is.na(row.names(freq.table))] <- 'Missing'   # Replace NA in row.names with string 'Missing'
-      woe.dfrm <- as.data.frame.matrix(freq.table)   # Convert frequency table to data frame
-      woe.dfrm <- woe.dfrm[, c(good, bad)]   # Select columns with raw frequencies only
-      
-      # Compute WOE and information value (IV) from crosstab frequencies
-      woe.dfrm$col.perc.a <- woe.dfrm[,1]/sum(woe.dfrm[,1])
-      woe.dfrm$col.perc.b <- woe.dfrm[,2]/sum(woe.dfrm[,2])
-      # Correct column percents in case of 0 frequencies (in case of no NA skip last row)
-      if ( !anyNA(df[,2]) ) {
-        if ( min(woe.dfrm[-nrow(woe.dfrm),1],na.rm=TRUE)==0 | min(woe.dfrm[-nrow(woe.dfrm),2],na.rm=TRUE)==0 ) {
-          woe.dfrm$col.perc.a[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)
-          woe.dfrm$col.perc.b[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)	
-        }
-      } else {
-        if ( min(woe.dfrm[,1],na.rm=TRUE)==0 | min(woe.dfrm[,2],na.rm=TRUE)==0 ) {
-          woe.dfrm$col.perc.a <- (woe.dfrm$col.perc.a+0.0001)/sum(woe.dfrm$col.perc.a+0.0001)
-          woe.dfrm$col.perc.b <- (woe.dfrm$col.perc.b+0.0001)/sum(woe.dfrm$col.perc.b+0.0001)	
-        }
-      }
-      woe.dfrm$woe <- 100*log(woe.dfrm$col.perc.a/woe.dfrm$col.perc.b)
-      woe.dfrm$woe[is.finite(woe.dfrm$woe)==FALSE] <- NA   # convert Inf, -Inf and NaN to NA
-      woe.dfrm$woe.lag <- c(NA, embed(woe.dfrm$woe,2)[,2])
-      woe.dfrm$woe.diff <- abs(woe.dfrm$woe-woe.dfrm$woe.lag)
-      woe.dfrm$iv.bins <- (woe.dfrm$col.perc.a-woe.dfrm$col.perc.b)*woe.dfrm$woe/100
-      
-      # Calculate total IV for current binning
-      iv.total <- sum(woe.dfrm$iv.bins, na.rm=TRUE)
-      
-      # Collect total IVs for different binning solutions
-      ifelse (exists('iv.total.collect', inherits=FALSE), iv.total.collect <- cbind(iv.total.collect, iv.total), iv.total.collect <- iv.total)
-      
-      # In case IV decreases by more than percentage specified by stop.limit parameter above
-      # restore former binning solution (cutpoints) and leave loop
-      if ( length(iv.total.collect)>1 ) {
-        actual.iv.decrease <- ((iv.total.collect[length(iv.total.collect)-1]-iv.total.collect[length(iv.total.collect)])/(iv.total.collect[length(iv.total.collect)-1]))
-        
-        if ( (actual.iv.decrease>stop.limit) && (exists('stop.limit.exceeded', inherits=FALSE)==FALSE) ) {
-          cutpoints.final <- cutpoints.backup
-          woe.dfrm.final <- woe.dfrm.backup
-          stop.limit.exceeded <- TRUE   # indicates that stop limit is exceeded to prevent overriding the final solution
-        }
-      }
-      
-      # Save first cutpoint solution and corresponding WOE values as final solution (is used in case no WOE merging will be applied)
-      if ( exists('cutpoints.backup', inherits=FALSE)==FALSE ) {
-        cutpoints.final <- cutpoints
-        woe.dfrm.final <- woe.dfrm
-      }
-      
-      # Saves binning solution after last merging step in case the IV stop limit was not exceeded
-      if ( (exists('stop.limit.exceeded', inherits=FALSE)==FALSE) && (length(cutpoints)==3) ) {
-        cutpoints.final <- cutpoints
-        woe.dfrm.final <- woe.dfrm
-      }
-      
-      # Save backups of current cutpoints and corresponding WOE values before merging to be able to retrieve solution in case IV decrease is too strong
-      cutpoints.backup <- cutpoints
-      woe.dfrm.backup <- woe.dfrm
+      woe.dfrm <- make_woe_table(dfrm, cutpoints, good, bad)
       
       # Determine the index of the minimum WOE difference between adjacent bins and
       # merge bins with minimum WOE difference (apart from the last 'Missing' bin)	
       min.woe.diff <- which(woe.dfrm$woe.diff[-nrow(woe.dfrm)]==min(woe.dfrm$woe.diff[-nrow(woe.dfrm)], na.rm=TRUE))
       cutpoints <- cutpoints[-c(min.woe.diff)]
-      
     }
     
+    # now that length(cutpoints) == min.cutpoints, use stop.limit to determine whether
+    # to do anymore binning. 
+    
+    # Calculate total IV for current binning
+    old.iv.total <- sum(woe.dfrm$iv.bins, na.rm=TRUE)
+    
+    # make new binning and calculate new woe and iv.
+    woe.dfrm <- make_woe_table(dfrm, cutpoints, good, bad)
+    current.iv.total <- sum(woe.dfrm$iv.bins, na.rm=TRUE)
+    
+    # get decrease
+    actual.iv.decrease <- (old.iv.total - current.iv.total)/ old.iv.total
+    while(actual.iv.decrease > stop.limit) {
+      
+      min.woe.diff <- which(woe.dfrm$woe.diff[-nrow(woe.dfrm)]==min(woe.dfrm$woe.diff[-nrow(woe.dfrm)], na.rm=TRUE))
+      new_cutpoints <- cutpoints[-c(min.woe.diff)] # get rid of the worst cutpoint
+      woe.dfrm <- make_woe_table(dfrm, new_cutpoints, good, bad) # make a new table
+      new.iv.total <- sum(woe.dfrm$iv.bins, na.rm=TRUE) 	  # calculate new iv
+      actual.iv.decrease <- (current.iv.total - new.iv.total)/current.iv.total # get the new decrease
+      if (actual.iv.decrease >stop.limit) {
+        cutpoints<- new_cutpoints
+      }
+    }
+    cutpoints.final <- cutpoints
+    woe.dfrm.final <- woe.dfrm
     
     ## Compute final IV
     iv.total.final <- sum(woe.dfrm.final$iv.bins, na.rm=TRUE)
@@ -268,7 +234,7 @@ woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.cla
     ## Merge levels with similar WOE values and calculate corresponding WOE table and IV step by step until
     ## 2 regular bins (+ Missing or 'misc. level') are left
     
-    while ( length(levels(dfrm$predictor.var.binned))>3 ) {
+    while ( length(levels(dfrm$predictor.var.binned))>min.cutpoints ) {
       
       # Compute crosstab from binned variable and target variable and covert it to a data frame
       freq.table <- table(dfrm$predictor.var.binned, dfrm$target.var)
@@ -309,7 +275,7 @@ woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.cla
       
       # Merge until 2 regular bins remain
       
-      if ( length(levels(dfrm$predictor.var.binned))>3 ) {
+      if ( length(levels(dfrm$predictor.var.binned))>min.cutpoints ) {
         
         # Merge levels with most similar WOE values
         min.woe.diff <- which(woe.dfrm$woe.diff==min(woe.dfrm$woe.diff, na.rm=TRUE))
@@ -595,7 +561,8 @@ woe.binning.2 <- function(df, target.var, pred.var, min.perc.total, min.perc.cla
 
 ##### This function calls the actual binning function above for every specified predictor variable that needs to be binned. #####
 
-woe.binning <- function(df, target.var, pred.var, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, event.class) {
+woe.binning <- function(df, target.var, pred.var, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, event.class,
+                        min.cutpoints) {
   
   
   #### Warning message and defaults in case parameters are not specified
@@ -660,7 +627,7 @@ woe.binning <- function(df, target.var, pred.var, min.perc.total, min.perc.class
   df <- df[!is.na(df[,target.var]),]
   
   #### Call actual binning function and put binning solutions together with respective variable names into a list
-  binning <- lapply(pred.var, function(x) woe.binning.2(df, target.var, x, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, bad, good))
+  binning <- lapply(pred.var, function(x) woe.binning.2(df, target.var, x, min.perc.total, min.perc.class, stop.limit, abbrev.fact.levels, bad, good, min.cutpoints))
   
   #### Read names and IV total values in the list and put them together with the binning tables
   names.of.pred.var <- lapply(pred.var, function(x) x)
@@ -672,5 +639,44 @@ woe.binning <- function(df, target.var, pred.var, min.perc.total, min.perc.class
   
   binning
   
+  
+}
+
+make_woe_table <- function(dfrm, cutpoints, good, bad){
+  
+  # Compute binned variable from cutpoints and add it to the subset data frame
+  dfrm$predictor.var.binned <- cut(dfrm$predictor.var, cutpoints, labels = NULL,
+                                   include.lowest = FALSE, right = TRUE, dig.lab = 10,
+                                   ordered_result = TRUE)
+  
+  # Compute crosstab from binned variable and target variable and covert it to a data frame
+  freq.table <- table(dfrm$predictor.var.binned, dfrm$target.var, useNA="always")
+  row.names(freq.table)[is.na(row.names(freq.table))] <- 'Missing'   # Replace NA in row.names with string 'Missing'
+  woe.dfrm <- as.data.frame.matrix(freq.table)   # Convert frequency table to data frame
+  woe.dfrm <- woe.dfrm[, c(good, bad)]   # Select columns with raw frequencies only
+  
+  # Compute WOE and information value (IV) from crosstab frequencies
+  woe.dfrm$col.perc.a <- woe.dfrm[,1]/sum(woe.dfrm[,1])
+  woe.dfrm$col.perc.b <- woe.dfrm[,2]/sum(woe.dfrm[,2])
+  # Correct column percents in case of 0 frequencies (in case of no NA skip last row)
+  if ( !anyNA(df[,2]) ) {
+    if ( min(woe.dfrm[-nrow(woe.dfrm),1],na.rm=TRUE)==0 | min(woe.dfrm[-nrow(woe.dfrm),2],na.rm=TRUE)==0 ) {
+      woe.dfrm$col.perc.a[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.a[-nrow(woe.dfrm)]+0.0001)
+      woe.dfrm$col.perc.b[-nrow(woe.dfrm)] <- (woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)/sum(woe.dfrm$col.perc.b[-nrow(woe.dfrm)]+0.0001)	
+    }
+  } else {
+    if ( min(woe.dfrm[,1],na.rm=TRUE)==0 | min(woe.dfrm[,2],na.rm=TRUE)==0 ) {
+      woe.dfrm$col.perc.a <- (woe.dfrm$col.perc.a+0.0001)/sum(woe.dfrm$col.perc.a+0.0001)
+      woe.dfrm$col.perc.b <- (woe.dfrm$col.perc.b+0.0001)/sum(woe.dfrm$col.perc.b+0.0001)	
+    }
+  }
+  woe.dfrm$woe <- 100*log(woe.dfrm$col.perc.a/woe.dfrm$col.perc.b)
+  woe.dfrm$woe[is.finite(woe.dfrm$woe)==FALSE] <- NA   # convert Inf, -Inf and NaN to NA
+  woe.dfrm$woe.lag <- c(NA, embed(woe.dfrm$woe,2)[,2])
+  # the woe.diff column is what is used to decide which cutpoint to drop.
+  woe.dfrm$woe.diff <- abs(woe.dfrm$woe-woe.dfrm$woe.lag)
+  woe.dfrm$iv.bins <- (woe.dfrm$col.perc.a-woe.dfrm$col.perc.b)*woe.dfrm$woe/100
+  
+  return(woe.dfrm)
   
 }
